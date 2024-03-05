@@ -27,7 +27,6 @@ jobs:
         java-version: '11'
         distribution: 'temurin'
         cache: maven
-    - run: echo "~src/test/java"
     - name: Build project with Maven
       run: mvn -B package --file pom.xml
     
