@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 
 
 import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProvider;
@@ -20,6 +22,7 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
+import entity.AuthRequest;
 import org.joda.time.DateTime;
 
 /**
@@ -42,8 +45,13 @@ public class App implements RequestHandler<APIGatewayProxyRequestEvent, APIGatew
                 .withHeaders(headers);
 
         try {
-            String cpf = input.getBody();
-            String password = input.getBody();
+
+            //Get Data of Body Request
+            ObjectMapper mapper = new ObjectMapper();
+            AuthRequest obj = mapper.readValue(input.getBody(), AuthRequest.class);
+
+            String cpf = obj.getCpf();
+            String password = obj.getPassword();
 
             if (!isValidCPF(cpf)) {
                 return response

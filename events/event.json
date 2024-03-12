@@ -1,18 +1,14 @@
 {
-    "body": "{\"message\": \"hello world\"}",
+    "body": "{\"cpf\": \"04574285036\", \"password\": \"1234567890\"}",
     "resource": "/{proxy+}",
     "path": "/path/to/resource",
     "httpMethod": "POST",
     "isBase64Encoded": false,
-    "queryStringParameters": {
-      "foo": "bar"
-    },
+    "queryStringParameters": {},
     "pathParameters": {
       "proxy": "/path/to/resource"
     },
-    "stageVariables": {
-      "baz": "qux"
-    },
+    "stageVariables": {},
     "headers": {
       "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
       "Accept-Encoding": "gzip, deflate, sdch",
