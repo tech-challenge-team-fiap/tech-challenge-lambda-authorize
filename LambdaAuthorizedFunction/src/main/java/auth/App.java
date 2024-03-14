@@ -1,58 +1,59 @@
 package auth;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.URL;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
+import java.util.*;
+import com.amazonaws.services.cognitoidp.model.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-
-
 import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProvider;
 import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProviderClientBuilder;
-import com.amazonaws.services.cognitoidp.model.AdminInitiateAuthRequest;
-import com.amazonaws.services.cognitoidp.model.AdminInitiateAuthResult;
-import com.amazonaws.services.cognitoidp.model.AuthFlowType;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import entity.AuthRequest;
-import org.joda.time.DateTime;
 
 /**
  * Handler for requests to Lambda function.
  */
 public class App implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
-    private static final String REGION = "";
-    private static final String USER_POOL_ID = "";
-    private static final String APP_CLIENT_ID = "";
+    private static final String REGION = "us-east-2";
+    private static final String USER_POOL_ID = "us-east-2_uipxoOQn3";
+    private static final String APP_CLIENT_ID = "41alb7cnri4rd5oou56rk37o8e";
 
-    private final AWSCognitoIdentityProvider cognitoClient = AWSCognitoIdentityProviderClientBuilder.standard()
-            .withRegion(REGION).build();
+    private final AWSCognitoIdentityProvider cognitoClient = AWSCognitoIdentityProviderClientBuilder
+            .standard()
+            .withRegion(REGION)
+            .build();
 
     public APIGatewayProxyResponseEvent handleRequest(final APIGatewayProxyRequestEvent input, final Context context) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
 
+        System.out.println("Start processing ");
+
         APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent()
                 .withHeaders(headers);
 
-        try {
+        System.out.println("finish processing ");
 
+        try {
             //Get Data of Body Request
             ObjectMapper mapper = new ObjectMapper();
+
+            System.out.println("authrequest processing ");
             AuthRequest obj = mapper.readValue(input.getBody(), AuthRequest.class);
+
 
             String cpf = obj.getCpf();
             String password = obj.getPassword();
 
+            System.out.println("CPF:" + cpf + " -- PASSWORD: " + password);
+
+            // Create a user in Cognito with CPF and password
+            System.out.println("call creating user");
+            createUserWithCPF(cognitoClient, cpf, password);
+
+            System.out.println("valid cpf user");
             if (!isValidCPF(cpf)) {
                 return response
                         .withStatusCode(400) // Bad Request
@@ -60,6 +61,7 @@ public class App implements RequestHandler<APIGatewayProxyRequestEvent, APIGatew
             }
 
             // Authenticate the user
+            System.out.println("start call authenticateUser");
             String accessToken = authenticateUser(cpf, password);
 
             return response
@@ -67,6 +69,7 @@ public class App implements RequestHandler<APIGatewayProxyRequestEvent, APIGatew
                     .withBody("{\"accessToken\": \"" + accessToken + "\"}");
 
         } catch (Exception e) {
+            System.out.println(e.getMessage());
             return response
                     .withStatusCode(401)
                     .withBody("Invalid Credentials");
@@ -74,17 +77,20 @@ public class App implements RequestHandler<APIGatewayProxyRequestEvent, APIGatew
     }
 
     private String authenticateUser(String cpf, String password) {
-        AdminInitiateAuthRequest authRequest = new AdminInitiateAuthRequest()
-                .withAuthFlow(AuthFlowType.ADMIN_NO_SRP_AUTH)
-                .withUserPoolId(USER_POOL_ID)
-                .withClientId(APP_CLIENT_ID)
-                .withAuthParameters(Map.of(
-                        "CPF", cpf,
-                        "PASSWORD", password
-                ));
-
         try {
+            Map<String, String> authParameters = new HashMap<>();
+            authParameters.put("USERNAME", cpf);
+            authParameters.put("PASSWORD", password);
+
+            AdminInitiateAuthRequest authRequest = new AdminInitiateAuthRequest()
+                    .withAuthFlow(AuthFlowType.ADMIN_NO_SRP_AUTH)
+                    .withClientId(APP_CLIENT_ID)
+                    .withUserPoolId(USER_POOL_ID)
+                    .withAuthParameters(authParameters);
+
             AdminInitiateAuthResult authResult = cognitoClient.adminInitiateAuth(authRequest);
+            System.out.println("Authentication successful");
+
             return authResult.getAuthenticationResult().getAccessToken();
 
         } catch (Exception e) {
@@ -92,34 +98,37 @@ public class App implements RequestHandler<APIGatewayProxyRequestEvent, APIGatew
         }
     }
 
+    private static void createUserWithCPF(AWSCognitoIdentityProvider cognitoIdentityProvider, String cpf, String password) {
+        // Set up attributes for user creation
+        List<AttributeType> userAttributes = new ArrayList<>();
+        userAttributes.add(new AttributeType().withName("custom:cpf").withValue(cpf));
+
+        // Create user request
+        AdminCreateUserRequest createUserRequest = new AdminCreateUserRequest()
+                .withUserPoolId(USER_POOL_ID)
+                .withUsername(cpf)
+                .withTemporaryPassword(password)
+                .withUserAttributes(userAttributes);
+
+        // Create user
+        AdminCreateUserResult createUserResult = cognitoIdentityProvider.adminCreateUser(createUserRequest);
+        System.out.println("User created: " + createUserResult.getUser().getUsername());
+
+        AdminSetUserPasswordRequest request = new AdminSetUserPasswordRequest()
+                .withUserPoolId(USER_POOL_ID)
+                .withUsername(cpf)
+                .withPassword(password)
+                .withPermanent(true);
+
+        cognitoIdentityProvider.adminSetUserPassword(request);
+        System.out.println("change password success");
+
+    }
+
     private boolean isValidCPF(String cpf) {
         if (cpf == null || cpf.length() != 11 || !cpf.matches("[0-9]+")) {
             return false;
         }
-
-        int[] cpfArray = cpf.chars().map(Character::getNumericValue).toArray();
-
-        int sum = 0;
-        for (int i = 0; i < 9; i++) {
-            sum += cpfArray[i] * (10 - i);
-        }
-        int firstCheckDigit = 11 - (sum % 11);
-        firstCheckDigit = (firstCheckDigit == 10) ? 0 : firstCheckDigit;
-
-        sum = 0;
-        for (int i = 0; i < 10; i++) {
-            sum += cpfArray[i] * (11 - i);
-        }
-        int secondCheckDigit = 11 - (sum % 11);
-        secondCheckDigit = (secondCheckDigit == 10) ? 0 : secondCheckDigit;
-
-        return cpfArray[9] == firstCheckDigit && cpfArray[10] == secondCheckDigit;
-    }
-
-    private String getPageContents(String address) throws IOException{
-        URL url = new URL(address);
-        try(BufferedReader br = new BufferedReader(new InputStreamReader(url.openStream()))) {
-            return br.lines().collect(Collectors.joining(System.lineSeparator()));
-        }
+        return true;
     }
 }

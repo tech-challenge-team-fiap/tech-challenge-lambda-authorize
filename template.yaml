@@ -14,10 +14,10 @@ Resources:
     Properties:
       UserPoolName: MyUserPool
       Schema:
-        - Name: cpf
-          AttributeDataType: String
-          Mutable: false
-          Required: false
+        - Name: "cpf"
+          AttributeDataType: "String"
+          DeveloperOnlyAttribute: false
+          Mutable: true
           StringAttributeConstraints:
             MinLength: "11"
             MaxLength: "11"
@@ -28,6 +28,12 @@ Resources:
       ClientName: MyUserPoolClient
       UserPoolId: !Ref MyCognitoUserPool
       GenerateSecret: false
+      ExplicitAuthFlows:
+        - "ALLOW_USER_SRP_AUTH"
+        - "ALLOW_REFRESH_TOKEN_AUTH"
+        - "ALLOW_USER_PASSWORD_AUTH"
+        - "ALLOW_ADMIN_USER_PASSWORD_AUTH"
+
 
   LambdaAuthorizedFunction:
     Type: AWS::Serverless::Function
@@ -35,6 +41,9 @@ Resources:
       CodeUri: LambdaAuthorizedFunction/
       Handler: auth.App::handleRequest # Assegure-se de que este caminho esteja correto para sua aplicação
       Runtime: java11
+      MemorySize: 512 # Verificar
+      Policies: # Verificar Policies
+        - AmazonCognitoPowerUser
       Environment:
         Variables:
           USER_POOL_ID:

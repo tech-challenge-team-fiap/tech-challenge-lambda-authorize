@@ -1,5 +1,5 @@
 {
-    "body": "{\"cpf\": \"04574285036\", \"password\": \"1234567890\"}",
+    "body": "{\"cpf\": \"04574285036\", \"password\": \"Test@1234\"}",
     "resource": "/{proxy+}",
     "path": "/path/to/resource",
     "httpMethod": "POST",
