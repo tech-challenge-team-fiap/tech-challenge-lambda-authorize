@@ -27,8 +27,6 @@ jobs:
         with:
           java-version: 17
           distribution: 'zulu' # Alternative distribution options are available.
-      - name: Change to project directory
-        run: cd LambdaAuthorizedFunction
       - name: Cache SonarCloud packages
         uses: actions/cache@v3
         with:
@@ -39,4 +37,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=tech-challenge-team-fiap_tech-challenge-lambda-authorize
+        run: cd LambdaAuthorizedFunction && mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=tech-challenge-team-fiap_tech-challenge-lambda-authorize
