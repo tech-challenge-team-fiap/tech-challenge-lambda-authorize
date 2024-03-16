@@ -19,8 +19,6 @@ jobs:
     name: Build and analyze
     runs-on: ubuntu-latest
     steps:
-      - name: Change to project directory
-        run: cd LambdaAuthorizedFunction
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
@@ -29,13 +27,15 @@ jobs:
         with:
           java-version: 17
           distribution: 'zulu' # Alternative distribution options are available.
+      - name: Change to project directory
+        run: cd LambdaAuthorizedFunction
       - name: Cache SonarCloud packages
         uses: actions/cache@v3
         with:
           path: ~/.sonar/cache
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
-      - name: Build and analyze
+      - name: Build and analyze with Sonar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
