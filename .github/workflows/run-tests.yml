@@ -34,7 +34,7 @@ jobs:
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
       - name: Change to LambdaDirectory
-        run: cd LambdaAuthorizeFunction
+        run: cd LambdaAuthorizedFunction
       - name: Cache Maven packages
         uses: actions/cache@v3
         with:
