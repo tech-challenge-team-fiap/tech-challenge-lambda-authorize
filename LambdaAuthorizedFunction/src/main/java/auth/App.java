@@ -16,9 +16,9 @@ import entity.AuthRequest;
  */
 public class App implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
-    private static final String REGION = "us-east-2";
-    private static final String USER_POOL_ID = "us-east-2_uipxoOQn3";
-    private static final String APP_CLIENT_ID = "41alb7cnri4rd5oou56rk37o8e";
+    private static final String REGION = System.getenv("REGION");
+    private static final String USER_POOL_ID = System.getenv("USER_POOL_ID");
+    private static final String APP_CLIENT_ID = System.getenv("APP_CLIENT_ID");
 
     private final AWSCognitoIdentityProvider cognitoClient = AWSCognitoIdentityProviderClientBuilder
             .standard()
@@ -29,39 +29,22 @@ public class App implements RequestHandler<APIGatewayProxyRequestEvent, APIGatew
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
 
-        System.out.println("Start processing ");
-
-        APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent()
-                .withHeaders(headers);
-
-        System.out.println("finish processing ");
+        APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent().withHeaders(headers);
 
         try {
-            //Get Data of Body Request
             ObjectMapper mapper = new ObjectMapper();
-
-            System.out.println("authrequest processing ");
             AuthRequest obj = mapper.readValue(input.getBody(), AuthRequest.class);
-
 
             String cpf = obj.getCpf();
             String password = obj.getPassword();
 
-            System.out.println("CPF:" + cpf + " -- PASSWORD: " + password);
-
-            // Create a user in Cognito with CPF and password
-            System.out.println("call creating user");
-            createUserWithCPF(cognitoClient, cpf, password);
-
-            System.out.println("valid cpf user");
+            System.out.println("start authentication with CPF:" + cpf);
             if (!isValidCPF(cpf)) {
                 return response
                         .withStatusCode(400) // Bad Request
                         .withBody("Invalid CPF");
             }
 
-            // Authenticate the user
-            System.out.println("start call authenticateUser");
             String accessToken = authenticateUser(cpf, password);
 
             return response
@@ -69,10 +52,9 @@ public class App implements RequestHandler<APIGatewayProxyRequestEvent, APIGatew
                     .withBody("{\"accessToken\": \"" + accessToken + "\"}");
 
         } catch (Exception e) {
-            System.out.println(e.getMessage());
             return response
                     .withStatusCode(401)
-                    .withBody("Invalid Credentials");
+                    .withBody("Invalid Credentials: " + e.getMessage());
         }
     }
 
@@ -82,6 +64,17 @@ public class App implements RequestHandler<APIGatewayProxyRequestEvent, APIGatew
             authParameters.put("USERNAME", cpf);
             authParameters.put("PASSWORD", password);
 
+            System.out.println("start change password success");
+            AdminSetUserPasswordRequest request = new AdminSetUserPasswordRequest()
+                    .withUserPoolId(USER_POOL_ID)
+                    .withUsername(cpf)
+                    .withPassword(password)
+                    .withPermanent(true);
+
+            cognitoClient.adminSetUserPassword(request);
+            System.out.println("finish change password success");
+
+            System.out.println("start auth request");
             AdminInitiateAuthRequest authRequest = new AdminInitiateAuthRequest()
                     .withAuthFlow(AuthFlowType.ADMIN_NO_SRP_AUTH)
                     .withClientId(APP_CLIENT_ID)
@@ -89,12 +82,15 @@ public class App implements RequestHandler<APIGatewayProxyRequestEvent, APIGatew
                     .withAuthParameters(authParameters);
 
             AdminInitiateAuthResult authResult = cognitoClient.adminInitiateAuth(authRequest);
-            System.out.println("Authentication successful");
+
+            System.out.println("Authentication successfu 1: " + authResult.getAuthenticationResult().getIdToken());
+            System.out.println("Authentication successfu 2: " + authResult.getAuthenticationResult().getAccessToken());
+            System.out.println("Authentication successfu 3: " + authResult.getChallengeName());
 
             return authResult.getAuthenticationResult().getAccessToken();
 
         } catch (Exception e) {
-            throw new RuntimeException("Authentication failed", e);
+            throw new RuntimeException("Authentication failed:"+ e.getMessage());
         }
     }
 

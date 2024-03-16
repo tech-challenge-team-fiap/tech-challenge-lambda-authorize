@@ -6,7 +6,7 @@ Description: >
 Globals:
   Function:
     Timeout: 20
-    MemorySize: 128
+    MemorySize: 512
 
 Resources:
   MyCognitoUserPool:
@@ -34,24 +34,40 @@ Resources:
         - "ALLOW_USER_PASSWORD_AUTH"
         - "ALLOW_ADMIN_USER_PASSWORD_AUTH"
 
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: "LambdaExecutionPolicyCognito"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'cognito-idp:*'
+                Resource: '*'
 
   LambdaAuthorizedFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: LambdaAuthorizedFunction/
-      Handler: auth.App::handleRequest # Assegure-se de que este caminho esteja correto para sua aplicação
+      Handler: auth.App::handleRequest # Ensure this path is correct for your application
       Runtime: java11
-      MemorySize: 512 # Verificar
-      Policies: # Verificar Policies
-        - AmazonCognitoPowerUser
+      Role: !GetAtt LambdaExecutionRole.Arn
       Environment:
         Variables:
-          USER_POOL_ID:
-            Ref: MyCognitoUserPool
-          APP_CLIENT_ID:
-            Ref: MyCognitoUserPoolClient
-          REGION:
-            Ref: AWS::Region
+          USER_POOL_ID: !Ref MyCognitoUserPool
+          APP_CLIENT_ID: !Ref MyCognitoUserPoolClient
+          REGION: !Ref AWS::Region
       Events:
         Authentication:
           Type: Api
