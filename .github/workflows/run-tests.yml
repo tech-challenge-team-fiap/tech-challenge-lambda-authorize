@@ -19,6 +19,8 @@ jobs:
     name: Build and analyze
     runs-on: ubuntu-latest
     steps:
+      - name: Change to project directory
+        run: cd LambdaAuthorizeFunction
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
